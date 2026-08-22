@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <title>ESP32 - Configuração Wi-Fi</title>
+    <link rel="stylesheet" type="text/css" href="novo_estilo.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+    <header>
+        <h1>ESP32 - Configuração de Rede</h1>
+    </header>
+
+    <main>
+        <p class="info-text">
+            O ESP32 está em modo Access Point (AP). Informe abaixo os dados
+            da rede Wi-Fi para que ele possa se conectar como Station (STA).
+        </p>
+
+        <form class="config-form" action="/save" method="POST">
+            <label for="ssid">Nome da rede</label>
+            <input type="text" id="ssid" name="ssid" placeholder="SSID" required>
+
+            <label for="password">Senha da rede</label>
+            <input type="password" id="password" name="password" placeholder="Senha" required>
+
+            <br>
+            <button class="btn btn-primary" type="submit">Salvar</button>
+        </form>
+    </main>
+
+    <footer>
+        <p>Projeto Sistemas Embarcados &middot; ESP32 Web Server</p>
+    </footer>
+
+</body>
+</html>

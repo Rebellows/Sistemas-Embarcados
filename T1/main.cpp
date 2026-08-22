@@ -14,10 +14,12 @@ int flag = 0;
 Preferences memoria;
 AsyncWebServer server(80);
 
-const int led = 2;
+const int rele = 2;
+
+float temp = 0;
 
 String le_temp() {
-  float temp = random(0, 1000) / 10.0;
+temp = random(0, 1000) / 10.0;
   return String(temp, 1);
 }
 
@@ -26,11 +28,31 @@ String le_umid() {
   return String(umid, 1);
 }
 
+String le_press() {
+  float press = random(9800, 10300) / 10.0; 
+  return String(press, 1);
+}
+
+String le_alt() {
+  float alt = random(0, 10000) / 10.0;  
+  return String(alt, 1);
+}
+
+
+String le_vent() {
+  if (temp > 25.0) return "Ligado";
+  return "Desligado";  
+}
+
 String processor(const String& var) {
   if (var == "TEMP") return le_temp();
   if (var == "UMID") return le_umid();
+  if (var == "PRESS") return le_press();
+  if (var == "ALT") return le_alt();
+  if (var == "VENT") return le_vent();
   return String();
 }
+
 
 void PaginaSalva(AsyncWebServerRequest *request) {
   if (request->hasArg("ssid") && request->hasArg("password")) {
@@ -47,6 +69,11 @@ void PaginaSalva(AsyncWebServerRequest *request) {
     request->send(400, "text/plain", "Erro: parâmetros inválidos");
   }
 }
+
+void PaginaConfig(AsyncWebServerRequest *request) {
+  request->send(SPIFFS, "/config.html", "text/html");
+}
+
 void setupAP() {
   flag = 0;
   // Como não tinham as credenciais salvas, precisa criar uma rede wifi (access point).
@@ -77,22 +104,16 @@ void setupSTA() {
     Serial.println(WiFi.localIP());
     flag = 1;
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send(SPIFFS, "/index.html", String(), false, processor);
+      request->send(SPIFFS, "/dashboard.html", String(), false, processor);
     });
     server.serveStatic("/", SPIFFS, "/");
     server.on("/on", HTTP_GET, [](AsyncWebServerRequest *request){
-      digitalWrite(led, HIGH);
+      digitalWrite(rele, HIGH);
       request->redirect("/");
     });
     server.on("/off", HTTP_GET, [](AsyncWebServerRequest *request){
-      digitalWrite(led, LOW);
+      digitalWrite(rele, LOW);
       request->redirect("/");
-    });
-    server.on("/temp", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send(200, "text/plain", le_temp());
-    });
-    server.on("/umid", HTTP_GET, [](AsyncWebServerRequest *request){
-      request->send(200, "text/plain", le_umid());
     });
     server.begin();
   }
@@ -102,16 +123,11 @@ void setupSTA() {
   }
 }
 
-void PaginaConfig(AsyncWebServerRequest *request) {
-  File arquivo = SPIFFS.open("/index.html", "r");
-  request->send(SPIFFS, "/index.html", "text/html");
-  arquivo.close();
-}
 
 void setup() {
   Serial.begin(115200);
-  pinMode(led, OUTPUT);
-  digitalWrite(led, LOW);
+  pinMode(rele, OUTPUT);
+  digitalWrite(rele, LOW);
 
   if (!SPIFFS.begin(true)) {
     Serial.println("Erro ao montar SPIFFS");
