@@ -6,42 +6,65 @@
 #include "FS.h"
 #include "SPIFFS.h"
 
+#include <DHT.h>
+#include <Adafruit_BMP085.h>
+
+#define DHTPIN 4
+#define DHTTYPE DHT22
+
+Adafruit_BMP085 bmp;
+
+DHT dht(DHTPIN, DHTTYPE);
+
 String ssid = "";
 String password = "";
 
-int flag = 0;
+// Variavel para armazenar o modo de operacao do ESP32
+// 0 = AP (Access Point), 1 = STA (Station)
+int esp_mode = 0;
 
 Preferences memoria;
 AsyncWebServer server(80);
 
 const int rele = 2;
+const int fanPin = 5;  
+const int ledPin = 13;
 
-float temp = 0;
+float temp = 0, umid = 0, press = 0, alt = 0;
 
 String le_temp() {
-temp = random(0, 1000) / 10.0;
+  float _aux_temp = dht.readTemperature();
+  if (!isnan(_aux_temp)) {
+    temp = _aux_temp;
+  }
   return String(temp, 1);
 }
 
 String le_umid() {
-  float umid = random(0, 1000) / 10.0;
+  float aux_umid = dht.readHumidity();
+  if (!isnan(aux_umid)) {
+    umid = aux_umid;
+  }
   return String(umid, 1);
 }
 
 String le_press() {
-  float press = random(9800, 10300) / 10.0; 
+  press = bmp.readPressure() / 100.0;
   return String(press, 1);
 }
 
 String le_alt() {
-  float alt = random(0, 10000) / 10.0;  
+  alt = bmp.readAltitude();
   return String(alt, 1);
 }
 
-
 String le_vent() {
-  if (temp > 25.0) return "Ligado";
-  return "Desligado";  
+  if (temp > 25.0) {
+    digitalWrite(fanPin, HIGH);
+    return "Ligado";
+  }
+  digitalWrite(fanPin, LOW);
+  return "Desligado";
 }
 
 String processor(const String& var) {
@@ -64,6 +87,8 @@ void PaginaSalva(AsyncWebServerRequest *request) {
     memoria.putString("password", NovaSenha);
     memoria.end();
     request->send(200, "text/html", "<h3>Configuração salva! Reinicie o ESP32.</h3>");
+    delay(1000);        // dá tempo da resposta HTTP ser enviada antes do reboot
+    ESP.restart();
   } 
   else {
     request->send(400, "text/plain", "Erro: parâmetros inválidos");
@@ -75,7 +100,7 @@ void PaginaConfig(AsyncWebServerRequest *request) {
 }
 
 void setupAP() {
-  flag = 0;
+  esp_mode = 0;
   // Como não tinham as credenciais salvas, precisa criar uma rede wifi (access point).
   // A configuração é o usando o médoto softAP da lib Wifi, onde os parâmetros são:
   // nome da rede wi-fi do ESP32 e a senha de acesso.
@@ -102,7 +127,7 @@ void setupSTA() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nConectado com sucesso!");
     Serial.println(WiFi.localIP());
-    flag = 1;
+    esp_mode = 1;
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
       request->send(SPIFFS, "/dashboard.html", String(), false, processor);
     });
@@ -126,8 +151,21 @@ void setupSTA() {
 
 void setup() {
   Serial.begin(115200);
+
   pinMode(rele, OUTPUT);
   digitalWrite(rele, LOW);
+
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, LOW);
+
+  pinMode(fanPin, OUTPUT);
+  digitalWrite(fanPin, LOW);
+
+  dht.begin();
+
+  if (!bmp.begin()) {
+    Serial.println("Erro ao encontrar o BMP085!");
+  }
 
   if (!SPIFFS.begin(true)) {
     Serial.println("Erro ao montar SPIFFS");
@@ -148,4 +186,14 @@ void setup() {
 }
 
 void loop() {
+  // caso ninguem esteja usando a pagina, ainda assim checa a temperatura
+  // para atualizar o estado do ventilador
+  static unsigned long lastCheck = 0;
+  if (millis() - lastCheck > 2000) { 
+    lastCheck = millis();
+    le_temp(); 
+  }
+
+  // acende o led se estiver no modo de operacao STA
+  digitalWrite(ledPin, (esp_mode == 1) ? HIGH : LOW);
 }
