@@ -133,7 +133,7 @@ p {
 .sensor-icon {
     width: 42px;
     height: 42px;
-    color: #0F3376;
+    object-fit: contain;
     margin-bottom: 6px;
 }
 
