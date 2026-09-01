@@ -27,15 +27,15 @@ Preferences memoria;
 AsyncWebServer server(80);
 
 const int rele = 2;
-const int fanPin = 5;  
-const int ledPin = 13;
+const int fanPin = 32;  
+const int ledPin = 33;
 
 float temp = 0, umid = 0, press = 0, alt = 0;
 
 String le_temp() {
-  float _aux_temp = dht.readTemperature();
-  if (!isnan(_aux_temp)) {
-    temp = _aux_temp;
+  float aux_temp = dht.readTemperature();
+  if (!isnan(aux_temp)) {
+    temp = aux_temp;
   }
   return String(temp, 1);
 }
@@ -67,8 +67,15 @@ String le_vent() {
   return "Desligado";
 }
 
+String temp_icon() {
+  if (temp < 20.0) return "/temp_frio.jpg";
+  if (temp < 30.0) return "/temp_ameno.jpg";
+  return "/temp_quente.jpg";
+}
+
 String processor(const String& var) {
   if (var == "TEMP") return le_temp();
+  if (var == "TEMP_ICON") return temp_icon();
   if (var == "UMID") return le_umid();
   if (var == "PRESS") return le_press();
   if (var == "ALT") return le_alt();
@@ -104,7 +111,7 @@ void setupAP() {
   // Como não tinham as credenciais salvas, precisa criar uma rede wifi (access point).
   // A configuração é o usando o médoto softAP da lib Wifi, onde os parâmetros são:
   // nome da rede wi-fi do ESP32 e a senha de acesso.
-  WiFi.softAP("ESP32HOME", "12345678");
+  WiFi.softAP("Mesa5ESP32", "12345678");
   // O método server.on (192.168.4.1/) retorna um html (HTTP_GET) para o cliente.  
   server.on("/", HTTP_GET, PaginaConfig);
   // O método server.on (192.168.4.1/save) recebe parâmetro (HTTP_POST) do cliente.
@@ -112,6 +119,7 @@ void setupAP() {
   // O método server.serverStatic (192.168.4.1/) busca todos arquivos que o html precise
   server.serveStatic("/", SPIFFS, "/"); 
   server.begin();
+  Serial.println("AP iniciado. IP: 192.168.4.1");
 }
 void setupSTA() {
   WiFi.begin(ssid.c_str(), password.c_str());
@@ -178,19 +186,23 @@ void setup() {
   memoria.end();
 
   if (ssid == "" || password == "") {
+    Serial.println("indo para o SetupAP");
     setupAP();
   } 
   else {
+    Serial.println("indo para o SetupSTA");
     setupSTA();   
   }
 }
 
 void loop() {
+  static unsigned long lastSensorCheck = 0;
+  static unsigned long lastWifiCheck = 0;
+
   // caso ninguem esteja usando a pagina, ainda assim checa a temperatura
   // para atualizar o estado do ventilador
-  static unsigned long lastCheck = 0;
-  if (millis() - lastCheck > 2000) { 
-    lastCheck = millis();
+  if (millis() - lastSensorCheck > 2000) { 
+    lastSensorCheck = millis();
     le_temp(); 
   }
 
