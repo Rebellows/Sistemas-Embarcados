@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoramento de Avioes - MQTT</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Monitoramento de Avioes</h1>
+    <span id="dia_hora"></span>
+  </header>
+
+  <section class="separation-banner aguardando" id="separacao">
+    <span id="separacao-texto">Aguardando dados dos dois avioes...</span>
+  </section>
+
+  <section class="charts">
+    <div class="chart-box chart-box-wide"><canvas id="chart-mapa"></canvas></div>
+  </section>
+
+  <section class="status-cards">
+    <div class="card" id="card-G1">
+      <h2>Aviao Real (G1)</h2>
+      <p>Status: <span class="status" id="status-G1">desconectado</span></p>
+      <p>Pitch: <span id="pitch-G1">--</span> graus</p>
+      <p>Altitude: <span id="altitude-G1">--</span> m</p>
+      <p>Velocidade: <span id="velocidade-G1">--</span> km/h</p>
+      <p>Distancia: <span id="distancia-G1">--</span> m</p>
+    </div>
+
+    <div class="card" id="card-G2">
+      <h2>Aviao Simulado (G2)</h2>
+      <p>Status: <span class="status" id="status-G2">desconectado</span></p>
+      <p>Pitch: <span id="pitch-G2">--</span> graus</p>
+      <p>Altitude: <span id="altitude-G2">--</span> m</p>
+      <p>Velocidade: <span id="velocidade-G2">--</span> km/h</p>
+      <p>Distancia: <span id="distancia-G2">--</span> m</p>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="chart-box"><canvas id="chart-altitude"></canvas></div>
+    <div class="chart-box"><canvas id="chart-velocidade"></canvas></div>
+    <div class="chart-box"><canvas id="chart-pitch"></canvas></div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/mqtt@5.14.1/dist/mqtt.min.js" defer></script>
+  <script src="funcoes.js" defer></script>
+  <script src="main.js" defer></script>
+</body>
+</html>

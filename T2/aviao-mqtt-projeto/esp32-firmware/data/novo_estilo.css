@@ -1,0 +1,112 @@
+html {
+    font-family: Arial;
+    text-align: center;
+    background-color: #eef3f8;   /* cor de fundo da página */
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+header {
+    background-color: #0F3376;
+    padding: 18px 10px;
+}
+
+header h1 {
+    color: white;
+    margin: 0;
+    padding: 0;
+}
+
+main {
+    flex: 1;
+    padding: 20px 10px;
+}
+
+footer {
+    background-color: #0F3376;
+    color: white;
+    padding: 10px;
+    font-size: 0.9rem;
+    margin-top: 20px;
+}
+
+footer p {
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+h1 {
+    color: #0F3376;
+    padding: 10px;
+}
+
+p {
+    font-size: 1.5rem;    /* relativo ao tamanho da fonte */
+}
+
+.info-text {
+    font-size: 1.1rem;
+    max-width: 420px;
+    margin: 0 auto 20px auto;
+    color: #333;
+}
+
+.button {
+    width: 200px;         /* fixar largura do botão */
+    border-radius: 4px;   /* fazer a borda arredondada */
+    border: none;         /* sem cor de borda */
+    color: white;       /* cor da letra */
+    font-size: 30px;      /* cor da letra */
+
+    padding: 16px;
+    margin: 5px;          /* distância entre os botões */
+}
+
+.button1 {
+    background-color: #008CBA;
+}
+
+.button2 {
+    background-color: #f44336;
+}
+
+/* ---------- Formulário (config.html) ---------- */
+
+.config-form {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 320px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.config-form label {
+    font-size: 1rem;
+    color: #0F3376;
+    font-weight: bold;
+}
+
+.config-form input {
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.btn-primary {
+    background-color: #0F3376;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 20px;
+    font-size: 1.1rem;
+    margin-top: 10px;
+    cursor: pointer;
+}

@@ -1,0 +1,147 @@
+html {
+    font-family: Arial;
+    background-color: #eef3f8;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    min-height: 100vh;
+}
+
+header {
+    background-color: #0F3376;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    color: white;
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+header #dia_hora {
+    color: white;
+    font-size: 1rem;
+}
+
+.status-cards {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+.card {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    padding: 16px 24px;
+    width: 240px;
+    text-align: left;
+}
+
+.card h2 {
+    color: #0F3376;
+    font-size: 1.1rem;
+    margin-top: 0;
+}
+
+.card p {
+    margin: 6px 0;
+    font-size: 0.95rem;
+    color: #333;
+}
+
+.status {
+    font-weight: bold;
+}
+
+.status.conectado {
+    color: #2e7d32;
+}
+
+.status.desconectado {
+    color: #c62828;
+}
+
+.separation-banner {
+    text-align: center;
+    padding: 14px;
+    margin: 20px 20px 0 20px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.separation-banner.aguardando {
+    background-color: #e0e0e0;
+    color: #555;
+}
+
+.separation-banner.seguro {
+    background-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+.separation-banner.atencao {
+    background-color: #fff9c4;
+    color: #a17d00;
+}
+
+.separation-banner.risco {
+    background-color: #ffcdd2;
+    color: #c62828;
+}
+
+.separation-banner.colisao {
+    background-color: #8b0000;
+    color: #ffffff;
+    animation: alerta-colisao 0.8s steps(2, end) infinite;
+}
+
+@keyframes alerta-colisao {
+    50% {
+        background-color: #ff0000;
+    }
+}
+
+.charts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    padding: 0 20px 30px 20px;
+}
+
+.charts canvas {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.chart-box {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    height: 300px;
+    min-width: 0; /* obrigatorio dentro de um flex container, senao o canvas
+                     entra num loop de resize e cresce sem parar (ver docs
+                     do Chart.js sobre uso em flexbox) */
+}
+
+.chart-box canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-box-wide {
+    max-width: 900px;
+    height: 340px;
+}
