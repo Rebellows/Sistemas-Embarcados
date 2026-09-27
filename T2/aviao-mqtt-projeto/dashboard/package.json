@@ -1,0 +1,12 @@
+{
+  "name": "aviao-dashboard",
+  "version": "1.0.0",
+  "description": "Servidor estatico para o dashboard web de monitoramento dos avioes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}
