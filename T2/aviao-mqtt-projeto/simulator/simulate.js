@@ -1,20 +1,13 @@
-// Simulador de "aviao fantasma": gera dados aleatorios plausiveis e publica
-// no mesmo broker/formato que o ESP32 real usa, so que sem hardware nenhum.
-//
-// Uso:
-//   node simulate.js
-//   TOPICO=Embarcados/G2 node simulate.js      (para trocar o topico)
-
 const mqtt = require('mqtt');
 
 const BROKER  = 'mqtt://broker.emqx.io:1883';
-const TOPICO  = process.env.TOPICO || 'Embarcados/G2';
+const TOPICO  = process.env.TOPICO || 'Embarcados/G8';
 const CLIENT_ID = 'sim_' + Math.random().toString(16).slice(2, 8); // precisa ser unico no broker
 
 // Mesmos limites do memorial descritivo
 const SPEED_MIN = 160, SPEED_MAX = 240;
 const PITCH_MIN = -15, PITCH_MAX = 15;
-const PUBLISH_INTERVAL_MS = 1000;
+const PUBLISH_INTERVAL_MS = 500;
 const ENDPOINT_DISTANCE_M = 6000;
 
 // Estado do aviao simulado (comeca igual ao real: 4000m, 200km/h)
@@ -23,9 +16,8 @@ let pitch = 0;
 let altitude = 4000;
 let distanciaPercorrida = 0;
 
-// Random walk em vez de valor totalmente aleatorio a cada tick: um aviao
-// de verdade nao pula de 160 pra 240 km/h de uma vez, ele acelera aos poucos.
-// Isso faz o grafico no dashboard parecer voo real, nao ruido puro.
+// Random walk em vez de valor totalmente aleatorio a cada tick, para dar um
+// aspecto mais real e nao deixar o aviao pulando
 function randomStep(current, min, max, stepSize) {
   const delta = (Math.random() * 2 - 1) * stepSize; // entre -stepSize e +stepSize
   let next = current + delta;
