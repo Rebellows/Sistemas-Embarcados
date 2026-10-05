@@ -10,39 +10,36 @@
 #include "GY521.h"
 #include <ESP32Servo.h>
 
-// ================= WiFi (AP/STA fallback, credenciais na NVS) =================
-// Reaproveitado do projeto anterior: se nao houver credenciais salvas, sobe um
-// Access Point para configuracao; senao, conecta direto na rede salva.
+// parte do wifi que nem T1
 String ssid = "";
 String password = "";
 int esp_mode = 0;  // 0 = AP, 1 = STA
 Preferences memoria;
 AsyncWebServer server(80);
 
-// ================= MQTT =================
+// MQTT
 const char* mqtt_broker = "broker.emqx.io";
 const int   mqtt_port   = 1883;
-#define MQTT_ID     "esp32_G1"        // <-- TROCAR: precisa ser UNICO no broker (nao pode repetir)
-#define TOPICO_PUB  "Embarcados/G1"   // <-- TROCAR: conforme o numero do seu grupo
+#define MQTT_ID     "esp32_G7"        
+#define TOPICO_PUB  "Embarcados/G7"   
 
 WiFiClient espClient;
 PubSubClient MQTT(espClient);
 
-// ================= Pinos =================
-const byte xAxisPin  = 34;   // joystick eixo X (acelera/desacelera)
-const byte yAxisPin  = 35;   // joystick eixo Y (sobe/desce)
-const byte buttonPin = 32;   // joystick SW (inicia percurso)
+// Pinos 
+const byte xAxisPin  = 34;   // eixo X (acelera/desacelera)
+const byte yAxisPin  = 35;   // eixo Y (sobe/desce)
+const byte buttonPin = 32;   // joystick click
 const byte servoPin  = 18;   // servo do profundor/asa
 
-// ================= Sensores/atuadores =================
+// Sensores
 GY521 sensor(0x68);
 Servo asaServo;
 
-// ================= Estado compartilhado entre as tasks =================
-// Protegido por mutex porque TaskControl escreve e TaskMQTT le, em cores diferentes.
+// estado do aviao, protegido por mutex por causa do freeRTOS
 volatile float g_pitch       = 0;
-volatile float g_altitude    = 4000.0;   // parte de 4000m (especificacao)
-volatile float g_velocidade  = 200.0;    // parte de 200km/h (especificacao)
+volatile float g_altitude    = 4000.0;   // parte de 4000m 
+volatile float g_velocidade  = 200.0;    // parte de 200km/h 
 volatile float g_distancia   = 0.0;
 volatile bool  g_started     = false;
 
@@ -53,9 +50,7 @@ const float SPEED_STEP = 0.5, SPEED_MIN = 160.0, SPEED_MAX = 240.0;
 
 SemaphoreHandle_t dataMutex;
 
-// ============================================================
-// Portal de configuracao (servido via SPIFFS, igual ao projeto anterior)
-// ============================================================
+// Configuracao do wifi que nem T1
 void PaginaSalva(AsyncWebServerRequest *request) {
   if (request->hasArg("ssid") && request->hasArg("password")) {
     String NovoSSID = request->arg("ssid");
@@ -76,9 +71,7 @@ void PaginaConfig(AsyncWebServerRequest *request) {
   request->send(SPIFFS, "/config.html", "text/html");
 }
 
-// ============================================================
-// WiFi manager
-// ============================================================
+// configuracao do access point
 void setupAP() {
   esp_mode = 0;
   WiFi.softAP("Mesa5ESP32", "12345678");
@@ -86,9 +79,10 @@ void setupAP() {
   server.on("/save", HTTP_POST, PaginaSalva);
   server.serveStatic("/", SPIFFS, "/");
   server.begin();
-  Serial.println("AP iniciado. IP: 192.168.4.1 — acesse para configurar o WiFi.");
+  Serial.println("AP iniciado. IP: 192.168.4.1: acesse para configurar o WiFi.");
 }
 
+// configuracao do station
 void setupSTA() {
   WiFi.begin(ssid.c_str(), password.c_str());
   Serial.printf("Conectando em %s...\n", ssid.c_str());
@@ -112,9 +106,7 @@ void conectaWifi() {
   setupSTA();
 }
 
-// ============================================================
-// MQTT (mesmo padrao PubSubClient do material da disciplina)
-// ============================================================
+// call para conectar no pubSub padrao do MQTT
 void conectaBroker() {
   while (!MQTT.connected()) {
     if (MQTT.connect(MQTT_ID)) {
@@ -127,6 +119,7 @@ void conectaBroker() {
   }
 }
 
+// publicando dados mantidos do aviao no broker
 void publicaDados() {
   float pitch, altitude, velocidade, distancia;
 
@@ -147,9 +140,7 @@ void publicaDados() {
   Serial.println(payload);
 }
 
-// ============================================================
-// Task de controle: joystick + IMU + servo (core 0)
-// ============================================================
+// Task de controle do aviao
 void TaskControl(void *pvParameters) {
   pinMode(buttonPin, INPUT_PULLUP);
   analogSetPinAttenuation(xAxisPin, ADC_11db);
@@ -160,7 +151,10 @@ void TaskControl(void *pvParameters) {
     Serial.println("Nao foi possivel conectar ao GY521");
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
-  sensor.setAccelSensitivity(0);   // +/- 2g, suficiente para oscilacao lenta
+
+  // dados de config inicial do giroscopio, precisa dar um tempo
+  // com ele parado pra nivelar direito
+  sensor.setAccelSensitivity(0);   // +/- 2g
   sensor.setGyroSensitivity(0);    // +/- 250 graus/s
   sensor.setThrottle();
   sensor.setThrottleTime(20);      // ~50Hz
@@ -175,27 +169,31 @@ void TaskControl(void *pvParameters) {
   const float dt = 0.05; // 50Hz, mesma cadencia do sensor
   TickType_t lastWake = xTaskGetTickCount();
 
+  // loop infinito de leitura de sensor e joystick
   for (;;) {
+    // le os inputs do joystick
     int xValue = analogRead(xAxisPin);
     int yValue = analogRead(yAxisPin);
     bool buttonPressed = (digitalRead(buttonPin) == LOW);
 
+    // calculo da posicao com deadzone para deixar mais natural
     int deltaX = xValue - 2048;
     int deltaY = yValue - 2048;
     if (abs(deltaX) < 300) deltaX = 0;  // deadzone
     if (abs(deltaY) < 300) deltaY = 0;
 
+    // se clicou no joystick, inicia o percurso
     if (buttonPressed && !g_started) {
       g_started = true;
       Serial.println("Percurso iniciado!");
     }
 
-    // joystick -> servo (open-loop): sobe/desce em rampa, nao em salto
+    // joystick determina o angulo do servo
     if (deltaY > 0)      servoAngle = min(servoAngle + ANGLE_STEP, ANGLE_MAX);
     else if (deltaY < 0) servoAngle = max(servoAngle - ANGLE_STEP, ANGLE_MIN);
     asaServo.write((int)servoAngle);
 
-    // joystick -> velocidade (mesma logica de rampa)
+    // joystick determina a velocidade do aviao
     xSemaphoreTake(dataMutex, portMAX_DELAY);
     float velocidadeLocal = g_velocidade;
     if (deltaX > 0)      velocidadeLocal = min(velocidadeLocal + SPEED_STEP, SPEED_MAX);
@@ -203,11 +201,12 @@ void TaskControl(void *pvParameters) {
     g_velocidade = velocidadeLocal;
     xSemaphoreGive(dataMutex);
 
-    // IMU: le o pitch real (nao controla nada, so mede)
+    // giroscopio lendo o angulo do aviao
     sensor.read();
     float pitch = -(sensor.getAngleY());
 
-    // altitude/distancia so acumulam depois do click inicial
+    // recomposicao do calculo de altitude e distancia recuperando
+    // o valor do pitch
     xSemaphoreTake(dataMutex, portMAX_DELAY);
     g_pitch = pitch;
     if (g_started) {
@@ -221,9 +220,7 @@ void TaskControl(void *pvParameters) {
   }
 }
 
-// ============================================================
-// Task de rede: wifi + mqtt (core 1)
-// ============================================================
+// conecta no wifi e manda os dados pro broker
 void TaskMQTT(void *pvParameters) {
   MQTT.setServer(mqtt_broker, mqtt_port);
 
@@ -232,7 +229,7 @@ void TaskMQTT(void *pvParameters) {
     if (!MQTT.connected()) conectaBroker();
 
     static unsigned long pooling = 0;
-    if (millis() > pooling + 1000) {   // publica 1x por segundo
+    if (millis() > pooling + 1000) {   // publica 0.5s
       pooling = millis();
       publicaDados();
     }
@@ -248,7 +245,7 @@ void setup() {
   dataMutex = xSemaphoreCreateMutex();
 
   if (!SPIFFS.begin(true)) {
-    Serial.println("Erro ao montar SPIFFS — o portal de configuracao nao vai funcionar.");
+    Serial.println("Erro ao montar SPIFFS, o portal de configuracao nao vai funcionar.");
   }
 
   memoria.begin("wifi", true);
