@@ -1,7 +1,3 @@
-// So serve os arquivos estaticos (html/js/css). Toda a logica de MQTT roda
-// no navegador (public/main.js), nao aqui no servidor, igual ao padrao do
-// material da disciplina (mqtt.min.js rodando direto na webview).
-
 const express = require('express');
 const path = require('path');
 
