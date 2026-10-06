@@ -191,6 +191,9 @@ void TaskControl(void *pvParameters) {
     // joystick determina o angulo do servo
     if (deltaY > 0)      servoAngle = min(servoAngle + ANGLE_STEP, ANGLE_MAX);
     else if (deltaY < 0) servoAngle = max(servoAngle - ANGLE_STEP, ANGLE_MIN);
+
+    if (deltaY > 0) Serial.printf("servoAngle=%f\n", min(servoAngle + ANGLE_STEP, ANGLE_MAX));
+    else if (deltaY < 0) Serial.printf("servoAngle=%f\n", max(servoAngle - ANGLE_STEP, ANGLE_MIN));
     asaServo.write((int)servoAngle);
 
     // joystick determina a velocidade do aviao
@@ -229,7 +232,7 @@ void TaskMQTT(void *pvParameters) {
     if (!MQTT.connected()) conectaBroker();
 
     static unsigned long pooling = 0;
-    if (millis() > pooling + 1000) {   // publica 0.5s
+    if (millis() > pooling + 500) {   // publica 0.5s
       pooling = millis();
       publicaDados();
     }
