@@ -1,23 +1,21 @@
-const MAX_PONTOS = 30; // mantem so os ultimos N pontos no grafico, senao cresce pra sempre
+const MAX_PONTOS = 30;
+const MAX_PONTOS_ROTA = 120; 
 
 const estado = {
-  G7: { contador: 0, pitch: [], altitude: [], velocidade: [], distancia: 0 },
-  G8: { contador: 0, pitch: [], altitude: [], velocidade: [], distancia: 0 }
+  G7: { contador: 0, pitch: [], altitude: [], velocidade: [], rota: [], distancia: 0, finalizado: false },
+  G8: { contador: 0, pitch: [], altitude: [], velocidade: [], rota: [], distancia: 0, finalizado: false }
 };
 
-const ROTA_KM = 60;
+const ROTA_KM = 6;
 const ROTA_METADE_KM = ROTA_KM / 2;
-
-const AVIAO_TAMANHO_M = 50;
-
-const PROXIMIDADE_HORIZONTAL_M = 500;
 
 const cores = {
   G7: 'rgba(15, 51, 118, 1)',   
-  G8: 'rgba(244, 67, 54, 1)'    
+  G8: 'rgba(244, 67, 54, 1)'  
 };
 
 let charts = {}; // { altitude: Chart, velocidade: Chart, pitch: Chart }
+let colisaoDetectada = false;
 
 function atualiza_hora() {
   const el = document.getElementById('dia_hora');
@@ -53,7 +51,7 @@ function criaOuAtualizaGrafico(chaveGrafico, canvasId, campo, titulo) {
 
   if (charts[chaveGrafico]) {
     charts[chaveGrafico].data.datasets = datasets;
-    charts[chaveGrafico].update();
+    charts[chaveGrafico].update('none');
     return;
   }
 
@@ -87,48 +85,68 @@ function verificaSeparacao() {
     return;
   }
 
-  const vertM = Math.abs(altG7 - altG8);
-  const horizM = Math.abs(calculaPosicao('G7') - calculaPosicao('G8')) * 1000; // km -> m
+  const posG7 = calculaPosicao('G7');
+  const posG8 = calculaPosicao('G8');
 
-  // So verifica altitude quando tem proximidade minima
-  if (horizM > PROXIMIDADE_HORIZONTAL_M) {
-    banner.className = 'separation-banner seguro';
-    texto.textContent = `Avioes distantes — ${(horizM / 1000).toFixed(1)}km de separacao horizontal`;
+  const horizM = Math.abs(posG7 - posG8) * 1000; 
+
+  const vertM = Math.abs(altG7 - altG8);
+
+  const AVIAO_TAMANHO_M = 75;
+  const ALTITUDE_COLISAO_M = 15;
+
+  if (horizM < AVIAO_TAMANHO_M && vertM < ALTITUDE_COLISAO_M) {
+    colisaoDetectada = true;
+  }
+
+  if (colisaoDetectada) {
+    banner.className = 'separation-banner colisao';
+    texto.textContent = `COLISAO - os avioes ocupam a mesma posicao (${posG7.toFixed(2)} km / ${altG7.toFixed(0)} m)`;
     return;
   }
 
-  // verifica colisao considerando tamanho do aviao
-  if (horizM <= AVIAO_TAMANHO_M && vertM <= 100) {
+  const separacao = vertM;
+
+  if (separacao <= 100) {
     banner.className = 'separation-banner risco';
-    texto.textContent = `RISCO DE COLISAO: ${horizM.toFixed(0)}m horizontal, ${vertM.toFixed(0)}m vertical`;
-  } else if (vertM < 200) {
+    texto.textContent = `RISCO DE COLISAO - separacao vertical de ${separacao.toFixed(0)}m`;
+  } else if (separacao < 200) {
     banner.className = 'separation-banner atencao';
-    texto.textContent = `Atencao: avioes proximos (${horizM.toFixed(0)}m horizontal, ${vertM.toFixed(0)}m vertical)`;
+    texto.textContent = `Atencao - separacao vertical de ${separacao.toFixed(0)}m`;
   } else {
     banner.className = 'separation-banner seguro';
-    texto.textContent = `Proximos na rota mas separacao vertical segura: ${vertM.toFixed(0)}m`;
+    texto.textContent = `Separacao segura - ${separacao.toFixed(0)}m entre os avioes`;
   }
 }
 
 function calculaPosicao(grupo) {
-  const d = estado[grupo].distancia / 1000; // metros -> km
-  // G7 comeca na ponta esquerda (-metade) andando pra direita (+d)
-  // G8 comeca na ponta direita (+metade) andando pra esquerda (-d)
+  const d = Math.min(estado[grupo].distancia / 1000, ROTA_KM); 
   return grupo === 'G7' ? -ROTA_METADE_KM + d : ROTA_METADE_KM - d;
+}
+
+function registraPosicaoNaRota(grupo) {
+  if (estado[grupo].finalizado) return;
+  estado[grupo].rota.push({
+    x: calculaPosicao(grupo),
+    y: estado[grupo].altitude[estado[grupo].altitude.length - 1].y
+  });
+  if (estado[grupo].rota.length > MAX_PONTOS_ROTA) estado[grupo].rota.shift();
 }
 
 function criaOuAtualizaMapa() {
   const canvasId = 'chart-mapa';
-  const posG7 = calculaPosicao('G7');
-  const posG8 = calculaPosicao('G8');
+  let posG7 = calculaPosicao('G7');
+  let posG8 = calculaPosicao('G8');
 
   const datasets = [
     {
       label: 'Aviao Real (G7)',
       borderColor: cores.G7,
       backgroundColor: cores.G7,
-      data: [{ x: posG7, y: 1 }],
-      pointRadius: 10,
+      data: estado.G7.rota.slice(),
+      showLine: true,
+      tension: 0.2,
+      pointRadius: (context) => context.dataIndex === context.dataset.data.length - 1 ? 10 : 2,
       pointStyle: 'triangle',
       rotation: 90 // aponta pra direita, sentido do voo do G7
     },
@@ -136,8 +154,10 @@ function criaOuAtualizaMapa() {
       label: 'Aviao Simulado (G8)',
       borderColor: cores.G8,
       backgroundColor: cores.G8,
-      data: [{ x: posG8, y: -1 }],
-      pointRadius: 10,
+      data: estado.G8.rota.slice(),
+      showLine: true,
+      tension: 0.2,
+      pointRadius: (context) => context.dataIndex === context.dataset.data.length - 1 ? 10 : 2,
       pointStyle: 'triangle',
       rotation: 270 // aponta pra esquerda, sentido do voo do G8
     }
@@ -145,7 +165,7 @@ function criaOuAtualizaMapa() {
 
   if (charts.mapa) {
     charts.mapa.data.datasets = datasets;
-    charts.mapa.update();
+    charts.mapa.update('none');
     return;
   }
 
@@ -162,30 +182,40 @@ function criaOuAtualizaMapa() {
           title: { display: true, text: 'posicao na rota (km)' }
         },
         y: {
-          min: -3, max: 3,
-          ticks: { display: false },
-          title: { display: true, text: '' }
+          title: { display: true, text: 'altitude (m)' }
         }
       },
-      plugins: { title: { display: true, text: 'Posicao na Rota' } }
+      plugins: {
+        title: {
+          display: true,
+          text: 'Posicao na Rota - altitude durante o cruzamento'
+        },
+        legend: { position: 'bottom' }
+      }
     }
   });
 }
 
 function registraDado(grupo, valores) {
+  if (colisaoDetectada) return;
+
   const s = estado[grupo];
+  const distancia = Number(valores.distanciaPercorrida);
+  if (!Number.isFinite(distancia) || distancia < s.distancia) return;
   const x = s.contador++;
 
   s.pitch.push({ x, y: valores.pitch });
   s.altitude.push({ x, y: valores.altitude });
   s.velocidade.push({ x, y: valores.velocidade });
-  s.distancia = valores.distanciaPercorrida;
+  s.distancia = Math.min(distancia, ROTA_KM * 1000);
 
   if (s.pitch.length > MAX_PONTOS) s.pitch.shift();
   if (s.altitude.length > MAX_PONTOS) s.altitude.shift();
   if (s.velocidade.length > MAX_PONTOS) s.velocidade.shift();
 
   atualizaCard(grupo, valores);
+  registraPosicaoNaRota(grupo);
+  s.finalizado = s.distancia >= ROTA_KM * 1000;
 
   criaOuAtualizaGrafico('altitude', 'chart-altitude', 'altitude', 'Altitude (m)');
   criaOuAtualizaGrafico('velocidade', 'chart-velocidade', 'velocidade', 'Velocidade (km/h)');
