@@ -1,8 +1,8 @@
 const BROKER = 'wss://broker.emqx.io:8084/mqtt';
 
 const TOPICOS = {
-  'Embarcados/G7': 'G7', // aviao real (ESP32)
-  'Embarcados/G8': 'G8'  // aviao simulado (Node.js)
+  'Embarcados/G7': 'G7', 
+  'Embarcados/G8': 'G8'  
 };
 
 const client = mqtt.connect(BROKER, {
@@ -48,6 +48,6 @@ setInterval(() => {
       statusEl.className = 'status desconectado';
     }
   });
-}, 2000);
+}, 500);
 
-setInterval(atualiza_hora, 500);
+setInterval(atualiza_hora, 100);
